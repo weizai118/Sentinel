@@ -153,7 +153,6 @@ public class DegradeRule extends AbstractRule {
 
     @Override
     public boolean passCheck(Context context, DefaultNode node, int acquireCount, Object... args) {
-
         if (cut) {
             return false;
         }
@@ -174,7 +173,7 @@ public class DegradeRule extends AbstractRule {
             if (passCount.incrementAndGet() < RT_MAX_EXCEED_N) {
                 return true;
             }
-        } else {
+        } else if (grade == RuleConstant.DEGRADE_GRADE_EXCEPTION_RATIO) {
             double exception = clusterNode.exceptionQps();
             double success = clusterNode.successQps();
             long total = clusterNode.totalQps();
@@ -183,11 +182,17 @@ public class DegradeRule extends AbstractRule {
                 return true;
             }
 
-            if (success == 0) {
-                return exception < RT_MAX_EXCEED_N;
+            double realSuccess = success - exception;
+            if (realSuccess <= 0 && exception < RT_MAX_EXCEED_N) {
+                return true;
             }
 
-            if (exception / (success + exception) < count) {
+            if (exception / success < count) {
+                return true;
+            }
+        } else if (grade == RuleConstant.DEGRADE_GRADE_EXCEPTION_COUNT) {
+            double exception = clusterNode.totalException();
+            if (exception < count) {
                 return true;
             }
         }
